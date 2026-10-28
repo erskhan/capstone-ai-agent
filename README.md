@@ -64,8 +64,6 @@ A sophisticated multi-agent loan approval system powered by Claude AI, FastAPI, 
 ### Infrastructure
 - **MySQL 8.0+**: Relational database
 - **PyMySQL**: MySQL driver for Python
-- **Docker**: Containerization
-- **Docker Compose**: Multi-container orchestration
 
 ### Testing
 - **pytest**: Testing framework
@@ -112,8 +110,7 @@ A sophisticated multi-agent loan approval system powered by Claude AI, FastAPI, 
 
 ### Prerequisites
 - Python 3.11+
-- Docker and Docker Compose (for containerized setup)
-- MySQL 8.0+ (for production) or local MySQL instance
+- MySQL 8.0+ running locally
 - Anthropic API key
 
 ### Installation
@@ -130,7 +127,7 @@ A sophisticated multi-agent loan approval system powered by Claude AI, FastAPI, 
    # Edit .env and add your Anthropic API key
    ```
 
-3. **Install dependencies (without Docker)**
+3. **Install dependencies**
    ```bash
    pip install poetry
    poetry install
@@ -138,38 +135,40 @@ A sophisticated multi-agent loan approval system powered by Claude AI, FastAPI, 
 
 ### Running Locally
 
-#### Option 1: Using Docker Compose (Recommended)
+#### Step 1: Ensure MySQL is Running
+
+Make sure your MySQL instance is running on localhost:3306:
+
 ```bash
-docker-compose up
+# Verify MySQL is running
+mysql -u root -pWP@12345 -h localhost
+# Should connect successfully
 ```
 
-Services will be available at:
-- **API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-- **Frontend**: http://localhost:8501
-- **Database**: localhost:3306 (MySQL)
+#### Step 2: Start the API Server
 
-#### Option 2: Running Services Separately
+```bash
+# Set environment variables
+export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+export ANTHROPIC_API_KEY="your-api-key-here"
 
-1. **Ensure MySQL is running** (or use your local MySQL instance)
-   ```bash
-   # If using Docker for MySQL only:
-   docker run --name loan-db -e MYSQL_ROOT_PASSWORD=WP@12345 \
-     -e MYSQL_DATABASE=loan_approval_dev \
-     -p 3306:3306 mysql:8.0
-   ```
+# Start the API (from project root)
+uvicorn backend.main:app --reload
+```
 
-2. **Start the API server**
-   ```bash
-   DATABASE_URL=mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev \
-   ANTHROPIC_API_KEY=<your-key> \
-   uvicorn backend.main:app --reload
-   ```
+API will be available at:
+- **API**: http://127.0.0.1:8000
+- **API Docs**: http://127.0.0.1:8000/docs
 
-3. **Start the frontend (in another terminal)**
-   ```bash
-   streamlit run frontend/app.py
-   ```
+#### Step 3: Start the Frontend (in another terminal)
+
+```bash
+# From project root
+streamlit run frontend/app.py
+```
+
+Frontend will be available at:
+- **UI**: http://127.0.0.1:8501
 
 ## 🧪 Testing
 

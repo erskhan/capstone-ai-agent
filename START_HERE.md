@@ -10,46 +10,47 @@ The entire **Foundation & Architecture** phase is finished. You now have:
 - ✅ Database schema and models
 - ✅ Working FastAPI backend
 - ✅ Streamlit frontend
-- ✅ Docker containerization
+- ✅ Local development ready (no Docker)
 - ✅ Test framework
 - ✅ Complete documentation
 
 ## 🚀 Quick Start (2 minutes)
 
-### Option 1: With Docker (Recommended)
+### Step 1: Verify MySQL
+
+```bash
+mysql -u root -pWP@12345 -h localhost
+exit
+```
+
+### Step 2: Setup Project
+
 ```bash
 cd /home/ubuntu/Desktop/CapStone
 cp .env.example .env
 # Edit .env and add your ANTHROPIC_API_KEY
-# Database URL is already set to MySQL
-docker-compose up
-```
-
-This will start MySQL, FastAPI, and Streamlit in containers.
-
-Then visit:
-- **API**: http://localhost:8000
-- **Docs**: http://localhost:8000/docs
-- **UI**: http://localhost:8501
-
-### Option 2: Local Development (With Your MySQL)
-```bash
-# Install dependencies
 pip install poetry
 poetry install
+```
 
-# Set environment variables (uses your local MySQL)
+### Step 3: Start API (Terminal 1)
+
+```bash
 export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
 export ANTHROPIC_API_KEY="your-api-key"
-
-# Run API
 uvicorn backend.main:app --reload
+```
 
-# In another terminal, run UI
+### Step 4: Start UI (Terminal 2)
+
+```bash
 streamlit run frontend/app.py
 ```
 
-Your MySQL instance on localhost:3306 will be used!
+Then visit:
+- **API**: http://127.0.0.1:8000
+- **Docs**: http://127.0.0.1:8000/docs
+- **UI**: http://127.0.0.1:8501
 
 ## 📚 Documentation Guide
 

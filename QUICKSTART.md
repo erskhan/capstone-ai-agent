@@ -4,7 +4,8 @@ Get the Agentic AI Intelligent Loan Approval System running in minutes!
 
 ## Prerequisites
 
-- Docker and Docker Compose installed
+- Python 3.11+
+- MySQL 8.0+ running on localhost:3306
 - Anthropic API key (get one from https://console.anthropic.com)
 
 ## 1️⃣ Clone and Setup (Already Done!)
@@ -12,12 +13,21 @@ Get the Agentic AI Intelligent Loan Approval System running in minutes!
 The project structure has been created with:
 - ✅ Backend (FastAPI)
 - ✅ Frontend (Streamlit)
-- ✅ Database models (SQLAlchemy)
+- ✅ Database models (SQLAlchemy with MySQL)
 - ✅ Configuration files
 - ✅ Test suite structure
-- ✅ Docker setup
+- ✅ Local development ready
 
-## 2️⃣ Configure Environment
+## 2️⃣ Verify MySQL is Running
+
+```bash
+# Check MySQL connection
+mysql -u root -pWP@12345 -h localhost
+
+# Type 'exit' to quit
+```
+
+## 3️⃣ Configure Environment
 
 ```bash
 cd /home/ubuntu/Desktop/CapStone
@@ -29,33 +39,48 @@ cp .env.example .env
 # ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-## 3️⃣ Start with Docker Compose
+## 4️⃣ Install Dependencies
 
 ```bash
-# Start all services
-docker-compose up
-
-# Services will be available at:
-# - API: http://localhost:8000
-# - API Docs: http://localhost:8000/docs
-# - Frontend: http://localhost:8501
+pip install poetry
+poetry install
 ```
 
-## 4️⃣ Test the API
+## 5️⃣ Start the API Server
+
+```bash
+# Terminal 1: Start API
+export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+export ANTHROPIC_API_KEY="your-api-key"
+uvicorn backend.main:app --reload
+
+# API will be available at: http://127.0.0.1:8000
+```
+
+## 6️⃣ Start the Frontend
+
+```bash
+# Terminal 2: Start Streamlit
+streamlit run frontend/app.py
+
+# UI will be available at: http://127.0.0.1:8501
+```
+
+## 7️⃣ Test the API
 
 In a new terminal:
 
 ```bash
 # Health check
-curl http://localhost:8000/health
+curl http://127.0.0.1:8000/health
 
 # View API documentation
-open http://localhost:8000/docs
+open http://127.0.0.1:8000/docs
 ```
 
-## 5️⃣ Test the Frontend
+## 8️⃣ Test the Frontend
 
-Open browser to: http://localhost:8501
+Open browser to: http://127.0.0.1:8501
 
 Try submitting a test application:
 - Fill in the form with sample data
@@ -92,7 +117,7 @@ pytest tests/test_api.py -v
 - ✅ MCP server scaffolding
 - ✅ Configuration management
 - ✅ Structured logging
-- ✅ Docker setup for local development
+- ✅ Local development ready (no Docker needed)
 - ✅ Test framework and sample tests
 - ✅ README and documentation
 
@@ -194,38 +219,45 @@ docker-compose logs streamlit
 
 ```
 ✅ Python 3.11+ environment
-✅ SQLAlchemy 2.0 ORM with MySQL driver
+✅ SQLAlchemy 2.0 ORM with MySQL driver (PyMySQL)
 ✅ FastAPI with async support
 ✅ Pydantic v2 validation
-✅ MySQL 8.0+ database
+✅ MySQL 8.0+ database (local)
 ✅ LangGraph ready (imports configured)
 ✅ Anthropic SDK ready
 ✅ Structured JSON logging
-✅ Docker containerization with MySQL
 ✅ pytest test framework
 ✅ Environment variable management
+✅ No Docker required - pure local development
 ```
 
-## 🚀 Running Without Docker
+## 🐛 Troubleshooting
 
-If you prefer local development with your MySQL instance:
-
+### MySQL Connection Error
 ```bash
-# Install dependencies
-poetry install
+# Make sure MySQL is running
+mysql -u root -pWP@12345 -h localhost
 
-# Set environment variables for local MySQL
-export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
-export ANTHROPIC_API_KEY="your-api-key"
-
-# Run API server
-uvicorn backend.main:app --reload
-
-# In another terminal, run frontend
-streamlit run frontend/app.py
+# If not running, start MySQL service on your system
+# macOS: brew services start mysql
+# Linux: sudo systemctl start mysql
+# Windows: net start MySQL80
 ```
 
-**Note**: Ensure your MySQL is running on `localhost:3306` with the credentials specified in .env.example
+### Port Already in Use
+```bash
+# If port 8000 is in use, use different port
+uvicorn backend.main:app --reload --port 8001
+
+# If port 8501 is in use, tell Streamlit
+streamlit run frontend/app.py --server.port 8502
+```
+
+### Database Tables Not Created
+```bash
+# Restart the API to trigger table creation
+# The tables are created automatically on first run
+```
 
 ---
 
