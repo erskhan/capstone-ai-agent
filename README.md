@@ -62,7 +62,8 @@ A sophisticated multi-agent loan approval system powered by Claude AI, FastAPI, 
 - **Plotly**: Data visualization
 
 ### Infrastructure
-- **PostgreSQL**: Relational database
+- **MySQL 8.0+**: Relational database
+- **PyMySQL**: MySQL driver for Python
 - **Docker**: Containerization
 - **Docker Compose**: Multi-container orchestration
 
@@ -112,7 +113,7 @@ A sophisticated multi-agent loan approval system powered by Claude AI, FastAPI, 
 ### Prerequisites
 - Python 3.11+
 - Docker and Docker Compose (for containerized setup)
-- PostgreSQL (for production)
+- MySQL 8.0+ (for production) or local MySQL instance
 - Anthropic API key
 
 ### Installation
@@ -146,18 +147,21 @@ Services will be available at:
 - **API**: http://localhost:8000
 - **API Docs**: http://localhost:8000/docs
 - **Frontend**: http://localhost:8501
-- **Database**: localhost:5432
+- **Database**: localhost:3306 (MySQL)
 
 #### Option 2: Running Services Separately
 
-1. **Start the database**
+1. **Ensure MySQL is running** (or use your local MySQL instance)
    ```bash
-   docker run --name loan-db -e POSTGRES_PASSWORD=password -p 5432:5432 postgres:15
+   # If using Docker for MySQL only:
+   docker run --name loan-db -e MYSQL_ROOT_PASSWORD=WP@12345 \
+     -e MYSQL_DATABASE=loan_approval_dev \
+     -p 3306:3306 mysql:8.0
    ```
 
 2. **Start the API server**
    ```bash
-   DATABASE_URL=postgresql://postgres:password@localhost:5432/loan_approval \
+   DATABASE_URL=mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev \
    ANTHROPIC_API_KEY=<your-key> \
    uvicorn backend.main:app --reload
    ```

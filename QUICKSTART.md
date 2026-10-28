@@ -194,27 +194,28 @@ docker-compose logs streamlit
 
 ```
 ✅ Python 3.11+ environment
-✅ SQLAlchemy 2.0 ORM
+✅ SQLAlchemy 2.0 ORM with MySQL driver
 ✅ FastAPI with async support
 ✅ Pydantic v2 validation
+✅ MySQL 8.0+ database
 ✅ LangGraph ready (imports configured)
 ✅ Anthropic SDK ready
 ✅ Structured JSON logging
-✅ Docker containerization
+✅ Docker containerization with MySQL
 ✅ pytest test framework
 ✅ Environment variable management
 ```
 
 ## 🚀 Running Without Docker
 
-If you prefer local development:
+If you prefer local development with your MySQL instance:
 
 ```bash
 # Install dependencies
 poetry install
 
-# Set environment variables
-export DATABASE_URL="sqlite:///./loan_approval.db"
+# Set environment variables for local MySQL
+export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
 export ANTHROPIC_API_KEY="your-api-key"
 
 # Run API server
@@ -223,6 +224,8 @@ uvicorn backend.main:app --reload
 # In another terminal, run frontend
 streamlit run frontend/app.py
 ```
+
+**Note**: Ensure your MySQL is running on `localhost:3306` with the credentials specified in .env.example
 
 ---
 

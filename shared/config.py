@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     # Database Configuration
     database_url: str = os.getenv(
-        "DATABASE_URL", "sqlite:///./loan_approval.db"
+        "DATABASE_URL", "mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
     )
 
     # Streamlit Configuration

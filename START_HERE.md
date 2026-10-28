@@ -20,20 +20,27 @@ The entire **Foundation & Architecture** phase is finished. You now have:
 ```bash
 cd /home/ubuntu/Desktop/CapStone
 cp .env.example .env
-# Add your ANTHROPIC_API_KEY to .env
+# Edit .env and add your ANTHROPIC_API_KEY
+# Database URL is already set to MySQL
 docker-compose up
 ```
+
+This will start MySQL, FastAPI, and Streamlit in containers.
 
 Then visit:
 - **API**: http://localhost:8000
 - **Docs**: http://localhost:8000/docs
 - **UI**: http://localhost:8501
 
-### Option 2: Local Development
+### Option 2: Local Development (With Your MySQL)
 ```bash
 # Install dependencies
 pip install poetry
 poetry install
+
+# Set environment variables (uses your local MySQL)
+export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+export ANTHROPIC_API_KEY="your-api-key"
 
 # Run API
 uvicorn backend.main:app --reload
@@ -41,6 +48,8 @@ uvicorn backend.main:app --reload
 # In another terminal, run UI
 streamlit run frontend/app.py
 ```
+
+Your MySQL instance on localhost:3306 will be used!
 
 ## 📚 Documentation Guide
 
@@ -348,6 +357,22 @@ The foundation is complete. You now have a professional-grade loan approval syst
 **Get Started**: `docker-compose up`  
 **Main Docs**: [README.md](./README.md)  
 **Next Phase**: Core Agent Development  
+
+---
+
+## 🔧 MySQL Configuration
+
+The system is now configured to use your MySQL instance:
+- **Host**: localhost
+- **Port**: 3306
+- **User**: root
+- **Password**: WP@12345
+- **Database**: loan_approval_dev
+
+These credentials are already set in:
+- `.env.example` - For local development
+- `docker-compose.yml` - For Docker setup
+- `shared/config.py` - Default fallback configuration
 
 ---
 

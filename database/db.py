@@ -18,11 +18,13 @@ if "sqlite" in settings.database_url:
         poolclass=StaticPool,
     )
 else:
+    # MySQL connection with connection pooling
     engine = create_engine(
         settings.database_url,
         pool_pre_ping=True,
         pool_size=10,
         max_overflow=20,
+        pool_recycle=3600,
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -41,10 +43,14 @@ def get_db():
 
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_conn, connection_record):
-    """Enable foreign keys for SQLite."""
+    """Enable foreign keys for SQLite and set MySQL charset."""
     if "sqlite" in settings.database_url:
         cursor = dbapi_conn.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+    elif "mysql" in settings.database_url:
+        cursor = dbapi_conn.cursor()
+        cursor.execute("SET NAMES utf8mb4")
         cursor.close()
 
 

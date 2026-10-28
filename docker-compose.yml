@@ -2,21 +2,23 @@ version: "3.8"
 
 services:
   db:
-    image: postgres:15-alpine
+    image: mysql:8.0
     container_name: loan-approval-db
     environment:
-      POSTGRES_USER: loanuser
-      POSTGRES_PASSWORD: loanpass
-      POSTGRES_DB: loan_approval_dev
+      MYSQL_ROOT_PASSWORD: WP@12345
+      MYSQL_DATABASE: loan_approval_dev
+      MYSQL_USER: loanuser
+      MYSQL_PASSWORD: loanpass
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U loanuser"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
   api:
     build:
@@ -24,7 +26,7 @@ services:
       dockerfile: Dockerfile
     container_name: loan-approval-api
     environment:
-      DATABASE_URL: postgresql://loanuser:loanpass@db:5432/loan_approval_dev
+      DATABASE_URL: mysql+pymysql://root:WP@12345@db:3306/loan_approval_dev
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       DEBUG: "true"
       LOG_LEVEL: INFO
@@ -43,7 +45,7 @@ services:
       dockerfile: Dockerfile
     container_name: loan-approval-ui
     environment:
-      DATABASE_URL: postgresql://loanuser:loanpass@db:5432/loan_approval_dev
+      DATABASE_URL: mysql+pymysql://root:WP@12345@db:3306/loan_approval_dev
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       API_URL: http://api:8000
     ports:
@@ -56,4 +58,4 @@ services:
     command: streamlit run frontend/app.py --server.address=0.0.0.0
 
 volumes:
-  postgres_data:
+  mysql_data:
