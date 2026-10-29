@@ -27,13 +27,13 @@ class Settings(BaseSettings):
 
     # LangSmith Configuration
     langsmith_api_key: str = os.getenv("LANGSMITH_API_KEY", "")
+    langsmith_base_url: str = os.getenv(
+        "LANGSMITH_BASE_URL", "https://api.smith.langchain.com"
+    )
     langsmith_project: str = os.getenv("LANGSMITH_PROJECT", "loan_approval_system")
     langsmith_tracing: bool = (
-        os.getenv("LANGSMITH_TRACING", "false").lower() == "true"
+        os.getenv("LANGSMITH_TRACING", "true").lower() == "true"
     )
-
-    # Anthropic API Configuration
-    anthropic_api_key: str = os.getenv("ANTHROPIC_API_KEY", "")
 
     # Security Configuration
     secret_key: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")

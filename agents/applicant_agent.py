@@ -9,8 +9,7 @@ from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, asdict
 from enum import Enum
 
-from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import HumanMessage, SystemMessage
+import anthropic
 
 from models.schemas import (
     ApplicantProfile,
@@ -71,18 +70,18 @@ class ApplicantProfileAgent:
         """Initialize the applicant profile agent."""
         settings = get_settings()
 
-        if not settings.anthropic_api_key:
+        if not settings.langsmith_api_key:
             raise AgentException(
-                "ANTHROPIC_API_KEY not configured",
+                "LANGSMITH_API_KEY not configured",
                 agent_name="ApplicantProfileAgent",
             )
 
-        self.llm = ChatAnthropic(
-            api_key=settings.anthropic_api_key,
-            model="claude-3-5-sonnet-20241022",
-            temperature=0,
-            timeout=settings.agent_timeout_seconds,
+        self.client = anthropic.Anthropic(
+            api_key=settings.langsmith_api_key,
+            base_url=settings.langsmith_base_url,
         )
+        self.model = "claude-opus-4-1-20250805"
+        self.timeout = settings.agent_timeout_seconds
 
         logger.info("ApplicantProfileAgent initialized successfully")
 
@@ -688,15 +687,19 @@ Employment Risk Score: {employment_risk['score']:.0f}/100 ({employment_risk['lev
 Detected Issues: {', '.join(anomalies) if anomalies else 'None'}
 """
 
-            message = HumanMessage(
-                content=f"Analyze this applicant profile and provide professional reasoning about their creditworthiness:\n\n{applicant_summary}"
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=1024,
+                system=system_prompt,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": f"Analyze this applicant profile and provide professional reasoning about their creditworthiness:\n\n{applicant_summary}"
+                    }
+                ]
             )
 
-            response = self.llm.invoke(
-                [SystemMessage(content=system_prompt), message]
-            )
-
-            reasoning = response.content.strip()
+            reasoning = response.content[0].text.strip()
             logger.debug(
                 f"AI reasoning generated for {applicant.email}",
                 extra={"reasoning_length": len(reasoning)},

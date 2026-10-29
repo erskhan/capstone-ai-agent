@@ -3,6 +3,7 @@ name = "loan-approval-system"
 version = "0.1.0"
 description = "Agentic AI Intelligent Loan Approval System"
 authors = ["Your Name <you@example.com>"]
+packages = [{include = "backend"}, {include = "agents"}, {include = "frontend"}, {include = "models"}, {include = "shared"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -14,12 +15,7 @@ pymysql = "^1.1.0"
 pydantic = "^2.4.0"
 pydantic-settings = "^2.0.0"
 python-dotenv = "^1.0.0"
-langchain = "^0.0.340"
-langchain-anthropic = "^0.1.0"
-langgraph = "^0.0.33"
-langsmith = "^0.0.66"
-anthropic = "^0.7.0"
-mcp = "^0.1.0"
+anthropic = ">=0.30.0"
 httpx = "^0.25.0"
 aiohttp = "^3.9.0"
 alembic = "^1.12.1"

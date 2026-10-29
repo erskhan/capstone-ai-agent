@@ -3,6 +3,9 @@
 import streamlit as st
 import requests
 from datetime import datetime
+from datetime import date
+
+today = date.today()
 
 st.set_page_config(
     page_title="Loan Approval System",
@@ -33,8 +36,10 @@ def main():
                 first_name = st.text_input("First Name", key="first_name")
                 email = st.text_input("Email", key="email")
                 date_of_birth = st.date_input(
-                    "Date of Birth", key="dob"
-                )
+                    "Date of Birth", key="dob",
+                    min_value=date(today.year -100, 1, 1),
+                    max_value=today
+                    )
 
             with col2:
                 last_name = st.text_input("Last Name", key="last_name")
@@ -47,7 +52,7 @@ def main():
             with col1:
                 city = st.text_input("City", key="city")
             with col2:
-                state = st.text_input("State", max_chars=2, key="state")
+                state = st.text_input("State", max_chars=10, key="state")
             with col3:
                 zip_code = st.text_input("ZIP Code", key="zip_code")
 
@@ -155,6 +160,7 @@ def main():
                         st.info(f"**Application ID:** {result['application_id']}")
                     else:
                         st.error(f"❌ Error: {response.status_code}")
+                        """st.write(response.text)"""
                 except Exception as e:
                     st.error(f"❌ Error submitting application: {str(e)}")
 

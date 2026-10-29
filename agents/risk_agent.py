@@ -4,8 +4,7 @@ from typing import Optional, Dict, List, Any
 from datetime import datetime
 import json
 
-from langchain_anthropic import ChatAnthropic
-from langchain.schema import SystemMessage, HumanMessage
+import anthropic
 
 from models.schemas import (
     LoanApplicationRequest,
@@ -26,11 +25,11 @@ class FinancialRiskAnalysisAgent:
     def __init__(self):
         """Initialize the risk analysis agent."""
         settings = get_settings()
-        self.client = ChatAnthropic(
-            model="claude-3-5-sonnet-20241022",
-            api_key=settings.anthropic_api_key,
-            timeout=settings.agent_timeout_seconds,
+        self.client = anthropic.Anthropic(
+            api_key=settings.langsmith_api_key,
+            base_url=settings.langsmith_base_url,
         )
+        self.model = "claude-opus-4-1-20250805"
         self.settings = settings
         logger.info("Financial Risk Analysis Agent initialized")
 
@@ -261,7 +260,7 @@ class FinancialRiskAnalysisAgent:
 
         return anomalies
 
-    async def analyze_patterns_with_claude(
+    def analyze_patterns_with_claude(
         self, application_data: dict, initial_analysis: dict
     ) -> dict:
         """Use Claude to analyze complex patterns and synthesize risk insights.
@@ -283,7 +282,7 @@ synthesis of overall risk. Focus on:
 4. Hidden risks not captured in standard metrics
 5. Overall risk assessment and key recommendations
 
-Provide concise, actionable insights."""
+Provide concise, actionable insights in 2-3 sentences."""
 
             analysis_text = f"""
 Applicant Financial Profile:
@@ -311,13 +310,19 @@ Please analyze these patterns and provide:
 3. Overall risk synthesis
 4. Recommendations for loan officers"""
 
-            messages = [
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=analysis_text),
-            ]
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=1024,
+                system=system_prompt,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": analysis_text,
+                    }
+                ]
+            )
 
-            response = self.client.invoke(messages)
-            claude_analysis = response.content
+            claude_analysis = response.content[0].text
 
             logger.info(
                 f"Claude pattern analysis completed",
@@ -385,7 +390,7 @@ Please analyze these patterns and provide:
 
         return min(max(score, 0), 100)
 
-    async def analyze(self, application: LoanApplicationRequest) -> Dict[str, Any]:
+    def analyze(self, application: LoanApplicationRequest) -> Dict[str, Any]:
         """Perform comprehensive financial risk analysis.
 
         Args:
@@ -460,7 +465,7 @@ Please analyze these patterns and provide:
             }
 
             # 6. Use Claude for pattern analysis
-            claude_results = await self.analyze_patterns_with_claude(
+            claude_results = self.analyze_patterns_with_claude(
                 app_data, initial_analysis
             )
 

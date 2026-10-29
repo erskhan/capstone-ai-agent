@@ -225,7 +225,7 @@ def main():
     except Exception as e:
         print(f"\nError running examples: {str(e)}")
         print("Make sure to:")
-        print("1. Set ANTHROPIC_API_KEY environment variable")
+        print("1. Set LANGSMITH_API_KEY and LANGSMITH_BASE_URL environment variables")
         print("2. Install dependencies: pip install -r requirements.txt")
 
 

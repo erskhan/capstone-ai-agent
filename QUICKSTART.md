@@ -6,7 +6,8 @@ Get the Agentic AI Intelligent Loan Approval System running in minutes!
 
 - Python 3.11+
 - MySQL 8.0+ running on localhost:3306
-- Anthropic API key (get one from https://console.anthropic.com)
+- LangSmith API key (get one from https://smith.langchain.com)
+- LangSmith Base URL (https://api.smith.langchain.com)
 
 ## 1️⃣ Clone and Setup (Already Done!)
 
@@ -35,9 +36,12 @@ cd /home/ubuntu/Desktop/CapStone
 # Copy example env file
 cp .env.example .env
 
-# Edit .env and add your Anthropic API key
-# ANTHROPIC_API_KEY=sk-ant-...
+# Edit .env and add your LangSmith credentials
+# LANGSMITH_API_KEY=your-langsmith-api-key
+# LANGSMITH_BASE_URL=https://api.smith.langchain.com
 ```
+
+For detailed LangSmith setup instructions, see [LANGSMITH_SETUP_GUIDE.md](LANGSMITH_SETUP_GUIDE.md)
 
 ## 4️⃣ Install Dependencies
 
@@ -50,11 +54,11 @@ poetry install
 
 ```bash
 # Terminal 1: Start API
-export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
-export ANTHROPIC_API_KEY="your-api-key"
+export DATABASE_URL="mysql+pymysql://root:Shahbaz123@localhost:3306/loan_approval_dev"
 uvicorn backend.main:app --reload
 
 # API will be available at: http://127.0.0.1:8000
+# (LangSmith credentials are loaded from .env file)
 ```
 
 ## 6️⃣ Start the Frontend
