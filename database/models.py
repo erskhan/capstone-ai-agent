@@ -33,6 +33,7 @@ class LoanApplicationModel(Base):
     )
     decision = relationship("LoanDecisionModel", back_populates="application", uselist=False)
     audit_logs = relationship("AuditLogModel", back_populates="application")
+    workflow_execution = relationship("WorkflowExecutionModel", back_populates="application", uselist=False)
 
 
 class ApplicantModel(Base):
@@ -156,3 +157,30 @@ class AuditLogModel(Base):
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     application = relationship("LoanApplicationModel", back_populates="audit_logs")
+
+
+class WorkflowExecutionModel(Base):
+    """Workflow execution model for tracking orchestration state and progress."""
+
+    __tablename__ = "workflow_executions"
+
+    id = Column(String(36), primary_key=True, index=True)
+    application_id = Column(String(36), ForeignKey("loan_applications.id"), unique=True, index=True)
+    correlation_id = Column(String(36), index=True)
+    workflow_state = Column(String(50), index=True)  # started, in_progress, completed, failed
+    current_step = Column(String(50), index=True)  # validate, applicant, risk, decision, complete
+    attempt_number = Column(Integer, default=1)
+
+    applicant_result = Column(JSON, nullable=True, default=None)
+    risk_result = Column(JSON, nullable=True, default=None)
+    decision_result = Column(JSON, nullable=True, default=None)
+
+    error_message = Column(Text, nullable=True)
+    error_step = Column(String(50), nullable=True)
+
+    started_at = Column(DateTime, default=datetime.utcnow, index=True)
+    step_started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
+
+    application = relationship("LoanApplicationModel", back_populates="workflow_execution")

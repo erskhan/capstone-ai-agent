@@ -1,5 +1,6 @@
 """LangGraph orchestration workflow for loan approval."""
 
+import asyncio
 from datetime import datetime
 from typing import Any, Dict, Optional
 from enum import Enum
@@ -238,6 +239,185 @@ class LoanApprovalOrchestrator:
                 "application_id": application_id,
                 "correlation_id": correlation_id,
                 "workflow_state": workflow_state.value,
+                "status": ApplicationStatus.REJECTED,
+                "error": str(e),
+                "completed_at": datetime.utcnow().isoformat(),
+                "steps": [step.to_dict() for step in steps],
+            }
+
+    async def process_application_async(
+        self, application: LoanApplicationRequest, application_id: str, correlation_id: str
+    ) -> Dict[str, Any]:
+        """Process application with parallel agent execution.
+
+        Workflow steps:
+        1. Validate input
+        2. Analyze applicant profile AND financial risk IN PARALLEL
+        3. Synthesize decision (after both analyses complete)
+        4. Return results
+
+        This async version reduces processing time by running applicant and risk analyses concurrently.
+
+        Args:
+            application: Loan application request
+            application_id: Unique application ID
+            correlation_id: Correlation ID for tracking
+
+        Returns:
+            Dictionary with workflow results and decision
+        """
+        workflow_state = WorkflowState.STARTED
+        steps = []
+        applicant_result = None
+        risk_result = None
+
+        try:
+            logger.info(
+                f"Starting async application processing: {application_id}",
+                extra={"correlation_id": correlation_id},
+            )
+
+            # Step 1: Validate input
+            validate_step = WorkflowStep("validate_input")
+            validate_step.started_at = datetime.utcnow()
+            try:
+                self._validate_application(application)
+                validate_step.status = "completed"
+                validate_step.result = {"validation": "passed"}
+            except Exception as e:
+                validate_step.status = "failed"
+                validate_step.error = str(e)
+                raise
+            finally:
+                validate_step.completed_at = datetime.utcnow()
+                steps.append(validate_step)
+
+            # Step 2: Run applicant and risk analyses in parallel
+            parallel_start = datetime.utcnow()
+            try:
+                logger.info(
+                    "Starting parallel applicant and risk analysis",
+                    extra={"correlation_id": correlation_id},
+                )
+
+                # Run both analyses concurrently
+                applicant_result, risk_result = await asyncio.gather(
+                    asyncio.to_thread(
+                        self.applicant_agent.analyze,
+                        application.applicant_profile,
+                        application.employment_info,
+                        application.credit_record,
+                    ),
+                    asyncio.to_thread(
+                        self.risk_agent.analyze,
+                        application,
+                    ),
+                    return_exceptions=False,
+                )
+
+                parallel_duration = (datetime.utcnow() - parallel_start).total_seconds()
+                logger.info(
+                    f"Parallel analysis completed in {parallel_duration:.2f}s",
+                    extra={
+                        "correlation_id": correlation_id,
+                        "applicant_status": applicant_result.get("validation_status"),
+                        "risk_score": risk_result.get("risk_score"),
+                    },
+                )
+
+                # Record both steps
+                applicant_step = WorkflowStep("analyze_applicant_profile")
+                applicant_step.started_at = parallel_start
+                applicant_step.completed_at = datetime.utcnow()
+                applicant_step.status = "completed"
+                applicant_step.result = applicant_result
+                steps.append(applicant_step)
+
+                risk_step = WorkflowStep("analyze_financial_risk")
+                risk_step.started_at = parallel_start
+                risk_step.completed_at = datetime.utcnow()
+                risk_step.status = "completed"
+                risk_step.result = risk_result
+                steps.append(risk_step)
+
+            except Exception as e:
+                logger.error(
+                    f"Parallel analysis failed: {str(e)}",
+                    extra={"correlation_id": correlation_id},
+                )
+                raise
+
+            # Step 3: Synthesize decision (uses results from parallel analyses)
+            decision_step = WorkflowStep("synthesize_decision")
+            decision_step.started_at = datetime.utcnow()
+            try:
+                workflow_state = WorkflowState.SYNTHESIZING_DECISION
+                logger.info(
+                    "Starting decision synthesis",
+                    extra={"correlation_id": correlation_id},
+                )
+
+                decision_result = await asyncio.to_thread(
+                    self.decision_agent.decide,
+                    application,
+                    applicant_result,
+                    risk_result,
+                )
+
+                decision_step.status = "completed"
+                decision_step.result = decision_result
+                logger.info(
+                    f"Decision synthesis completed: {decision_result.get('classification_value')}",
+                    extra={"correlation_id": correlation_id},
+                )
+            except Exception as e:
+                decision_step.status = "failed"
+                decision_step.error = str(e)
+                logger.error(
+                    f"Decision synthesis failed: {str(e)}",
+                    extra={"correlation_id": correlation_id},
+                )
+                raise
+            finally:
+                decision_step.completed_at = datetime.utcnow()
+                steps.append(decision_step)
+
+            workflow_state = WorkflowState.COMPLETED
+
+            # Compile final result
+            result = {
+                "application_id": application_id,
+                "correlation_id": correlation_id,
+                "workflow_state": workflow_state.value,
+                "parallel_execution": True,
+                "status": ApplicationStatus.APPROVED if decision_result["classification_value"] == "approved" else ApplicationStatus.UNDER_REVIEW,
+                "completed_at": datetime.utcnow().isoformat(),
+                "steps": [step.to_dict() for step in steps],
+                "applicant_analysis": applicant_result,
+                "risk_analysis": risk_result,
+                "decision": decision_result,
+            }
+
+            logger.info(
+                f"Async application processing completed successfully: {application_id}",
+                extra={"correlation_id": correlation_id, "decision": decision_result.get("classification_value")},
+            )
+
+            return result
+
+        except Exception as e:
+            workflow_state = WorkflowState.FAILED
+            logger.error(
+                f"Async application processing failed: {str(e)}",
+                extra={"correlation_id": correlation_id},
+                exc_info=True,
+            )
+
+            return {
+                "application_id": application_id,
+                "correlation_id": correlation_id,
+                "workflow_state": workflow_state.value,
+                "parallel_execution": True,
                 "status": ApplicationStatus.REJECTED,
                 "error": str(e),
                 "completed_at": datetime.utcnow().isoformat(),
