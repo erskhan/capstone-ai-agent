@@ -29,7 +29,7 @@ class FinancialRiskAnalysisAgent:
             api_key=settings.langsmith_api_key,
             base_url=settings.langsmith_base_url,
         )
-        self.model = "claude-opus-4-1-20250805"
+        self.model = "global.anthropic.claude-opus-4-5-20251101-v1:0"
         self.settings = settings
         logger.info("Financial Risk Analysis Agent initialized")
 

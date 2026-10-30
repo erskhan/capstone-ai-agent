@@ -1,4 +1,4 @@
-"""Application History & Search Page."""
+"""Application History & Search Page - Applicant Only."""
 
 import streamlit as st
 import requests
@@ -8,16 +8,33 @@ API_URL = st.secrets.get("API_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="Application History", page_icon="📚", layout="wide")
 
-st.title("📚 Application History")
-st.markdown("*View and search your past loan applications*")
+# Check if user is logged in as applicant
+if st.session_state.get("user_type") != "applicant":
+    st.error("❌ Please login as an Applicant to view your history")
+    st.info("Go back to home page and login with your email")
+    st.stop()
+
+st.title("📚 Your Application History")
+st.markdown("*View and search your own loan applications*")
+
+# Show logout button
+col1, col2 = st.columns([5, 1])
+with col2:
+    if st.button("🔓 Logout", key="application_history_logout"):
+        st.session_state.user_type = None
+        st.session_state.user_email = None
+        st.rerun()
+
+st.markdown(f"**Logged in as:** {st.session_state.user_email}")
+st.markdown("---")
 
 
-def get_applications(skip: int = 0, limit: int = 20):
-    """Get applications list from API."""
+def get_applications(user_email: str, skip: int = 0, limit: int = 20):
+    """Get applications list from API filtered by email."""
     try:
         response = requests.get(
             f"{API_URL}/api/applications",
-            params={"skip": skip, "limit": limit},
+            params={"skip": skip, "limit": limit, "user_email": user_email},
             timeout=10,
         )
         return response.json()
@@ -69,9 +86,9 @@ def main():
     with col3:
         results_limit = st.selectbox("Results per page", [10, 20, 50, 100])
 
-    # Get Applications
-    with st.spinner("Loading applications..."):
-        result = get_applications(skip=0, limit=results_limit)
+    # Get Applications (filtered by logged-in user's email)
+    with st.spinner("Loading your applications..."):
+        result = get_applications(user_email=st.session_state.user_email, skip=0, limit=results_limit)
 
         if "error" in result:
             st.error(f"❌ Error loading applications: {result['error']}")
@@ -139,13 +156,13 @@ def main():
                         col1, col2 = st.columns(2)
                         with col1:
                             if st.button(f"📊 View Details", key=f"detail_{app_id}"):
-                                st.session_state.selected_application_id = app_id
+                                st.session_state.auto_load_app_id = app_id
                                 st.switch_page("pages/02_check_status.py")
 
                         with col2:
                             if app["status"] == "rejected":
                                 if st.button(f"🗣️ Appeal", key=f"appeal_{app_id}"):
-                                    st.session_state.appeal_application_id = app_id
+                                    st.session_state.auto_load_app_id = app_id
                                     st.switch_page("pages/03_submit_appeal.py")
 
                 # Pagination

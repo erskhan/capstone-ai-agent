@@ -1,50 +1,78 @@
+# ── Environment & Secrets ──────────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.*.local
+*.env
+
+# ── Python ─────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyd
 *.so
-.Python
+
+# ── Virtual Environments ───────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ── Build / Distribution ───────────────────────────────────────────────────────
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
 *.egg
-MANIFEST
+.eggs/
+
+# ── Testing & Coverage ─────────────────────────────────────────────────────────
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
-.nox/
-.hypothesis/
+*.cover
+coverage.xml
+nosetests.xml
+test-results/
+
+# ── Logs ───────────────────────────────────────────────────────────────────────
+*.log
+logs/
+backend.log
+
+# ── Database ───────────────────────────────────────────────────────────────────
 *.db
 *.sqlite
 *.sqlite3
-.env
-.env.local
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-.idea/
+
+# ── IDE / Editor ───────────────────────────────────────────────────────────────
 .vscode/
+.idea/
 *.swp
 *.swo
 *~
 .DS_Store
-.env.example
-poetry.lock
-.langsmith
-.claude
+Thumbs.db
+
+# ── Streamlit ──────────────────────────────────────────────────────────────────
+.streamlit/secrets.toml
+frontend/.streamlit/secrets.toml
+
+# ── Docker ─────────────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── Node / Frontend tooling (if added later) ───────────────────────────────────
+node_modules/
+.npm/
+
+# ── Claude Code local settings ────────────────────────────────────────────────
+.claude/
+
+# ── Misc ───────────────────────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig
+.cache/
+tmp/

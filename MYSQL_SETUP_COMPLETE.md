@@ -20,7 +20,7 @@ Your **Agentic AI Intelligent Loan Approval System** has been successfully migra
 Host:     localhost
 Port:     3306
 Username: root
-Password: WP@12345
+Password: <your-db-password>
 Database: loan_approval_dev
 ```
 
@@ -76,7 +76,7 @@ pip install poetry
 poetry install
 
 # Set environment variables
-export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+export DATABASE_URL="mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev"
 export ANTHROPIC_API_KEY="your-anthropic-key-here"
 
 # Terminal 1: Start API server
@@ -90,12 +90,12 @@ streamlit run frontend/app.py
 
 ### 1. Check MySQL Connection
 ```bash
-mysql -u root -pWP@12345 -h localhost
+mysql -u root -p<your-db-password> -h localhost
 ```
 
 ### 2. Check Database
 ```bash
-mysql -u root -pWP@12345 -e "SHOW DATABASES;"
+mysql -u root -p<your-db-password> -e "SHOW DATABASES;"
 ```
 
 ### 3. Test API Health
@@ -163,7 +163,7 @@ audit_logs             (Complete audit trail)
 
 3. **Verify in MySQL**
    ```bash
-   mysql -u root -pWP@12345 loan_approval_dev
+   mysql -u root -p<your-db-password> loan_approval_dev
    SELECT * FROM loan_applications;
    ```
 
@@ -187,7 +187,7 @@ docker ps
 docker-compose logs db
 
 # If using local MySQL:
-mysql -u root -pWP@12345 -h localhost
+mysql -u root -p<your-db-password> -h localhost
 ```
 
 ### Database Not Found
@@ -197,7 +197,7 @@ mysql -u root -pWP@12345 -h localhost
 **Solution**:
 ```bash
 # Manually create database
-mysql -u root -pWP@12345 -e "CREATE DATABASE loan_approval_dev;"
+mysql -u root -p<your-db-password> -e "CREATE DATABASE loan_approval_dev;"
 
 # Or restart the API - it will auto-create on first run
 docker-compose restart api
@@ -285,7 +285,7 @@ See `Loan_Application_Plan.md` for the complete 9-phase roadmap.
 docker-compose up
 
 # Check MySQL
-mysql -u root -pWP@12345 -h localhost
+mysql -u root -p<your-db-password> -h localhost
 
 # View logs
 docker-compose logs -f api

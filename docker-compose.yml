@@ -5,10 +5,10 @@ services:
     image: mysql:8.0
     container_name: loan-approval-db
     environment:
-      MYSQL_ROOT_PASSWORD: WP@12345
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: loan_approval_dev
-      MYSQL_USER: loanuser
-      MYSQL_PASSWORD: loanpass
+      MYSQL_USER: ${MYSQL_USER:-loanuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
@@ -26,8 +26,9 @@ services:
       dockerfile: Dockerfile
     container_name: loan-approval-api
     environment:
-      DATABASE_URL: mysql+pymysql://root:WP@12345@db:3306/loan_approval_dev
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+      LANGSMITH_BASE_URL: ${LANGSMITH_BASE_URL}
       DEBUG: "true"
       LOG_LEVEL: INFO
     ports:
@@ -45,8 +46,9 @@ services:
       dockerfile: Dockerfile
     container_name: loan-approval-ui
     environment:
-      DATABASE_URL: mysql+pymysql://root:WP@12345@db:3306/loan_approval_dev
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       API_URL: http://api:8000
     ports:
       - "8501:8501"

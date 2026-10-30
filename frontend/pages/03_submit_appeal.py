@@ -1,14 +1,32 @@
-"""Appeal Submission Page."""
+"""Appeal Submission Page - Applicant Only."""
 
 import streamlit as st
 import requests
+import pandas as pd
 
 API_URL = st.secrets.get("API_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="Submit Appeal", page_icon="🗣️", layout="wide")
 
+# Check if user is logged in as applicant
+if st.session_state.get("user_type") != "applicant":
+    st.error("❌ Please login as an Applicant to submit appeals")
+    st.info("Go back to home page and login with your email")
+    st.stop()
+
 st.title("🗣️ Submit Appeal")
 st.markdown("*You have 30 days to appeal a rejected application*")
+
+# Show logout button
+col1, col2 = st.columns([5, 1])
+with col2:
+    if st.button("🔓 Logout", key="submit_appeal_logout"):
+        st.session_state.user_type = None
+        st.session_state.user_email = None
+        st.rerun()
+
+st.markdown(f"**Logged in as:** {st.session_state.user_email}")
+st.markdown("---")
 
 
 def submit_appeal(application_id: str, appeal_data: dict):
@@ -26,13 +44,17 @@ def submit_appeal(application_id: str, appeal_data: dict):
 
 def main():
     """Main appeal submission interface."""
-    # Application ID Input
+    # Application ID Input (auto-load if from history)
+    default_app_id = st.session_state.get("auto_load_app_id", "") or st.session_state.get("appeal_application_id", "")
+    if st.session_state.get("auto_load_app_id"):
+        st.session_state.pop("auto_load_app_id", None)
+
     col1, col2 = st.columns([3, 1])
 
     with col1:
         application_id = st.text_input(
             "Application ID *",
-            value=st.session_state.get("appeal_application_id", ""),
+            value=default_app_id,
             placeholder="Enter the application ID to appeal",
         )
 

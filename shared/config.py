@@ -3,6 +3,7 @@
 import os
 from functools import lru_cache
 
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -18,7 +19,7 @@ class Settings(BaseSettings):
 
     # Database Configuration
     database_url: str = os.getenv(
-        "DATABASE_URL", "mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+        "DATABASE_URL", "mysql+pymysql://root:changeme@localhost:3306/loan_approval_dev"
     )
 
     # Streamlit Configuration
@@ -67,10 +68,7 @@ class Settings(BaseSettings):
         os.getenv("API_RATE_LIMIT_PER_MINUTE", 100)
     )
 
-    class Config:
-        """Pydantic config."""
-
-        env_file = ".env"
+    model_config = ConfigDict(extra="ignore", env_file=".env")
 
 
 @lru_cache()

@@ -44,7 +44,7 @@ The Agentic AI Intelligent Loan Approval System has been successfully migrated f
 Host:     localhost
 Port:     3306
 Username: root
-Password: WP@12345
+Password: <your-db-password>
 Database: loan_approval_dev
 ```
 
@@ -75,7 +75,7 @@ Docker Compose will automatically:
 
 2. **Create the database** (if it doesn't exist)
    ```bash
-   mysql -u root -pWP@12345 -e "CREATE DATABASE IF NOT EXISTS loan_approval_dev;"
+   mysql -u root -p<your-db-password> -e "CREATE DATABASE IF NOT EXISTS loan_approval_dev;"
    ```
 
 3. **Install Python dependencies**
@@ -86,7 +86,7 @@ Docker Compose will automatically:
 
 4. **Set environment variables**
    ```bash
-   export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+   export DATABASE_URL="mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev"
    export ANTHROPIC_API_KEY="your-api-key"
    ```
 
@@ -156,7 +156,7 @@ Via Streamlit at: http://localhost:8501
 
 ### 4. **Check Database**
 ```bash
-mysql -u root -pWP@12345 loan_approval_dev
+mysql -u root -p<your-db-password> loan_approval_dev
 SHOW TABLES;
 SELECT * FROM loan_applications;
 ```
@@ -170,12 +170,12 @@ SELECT * FROM loan_applications;
 # Verify MySQL is running
 docker ps  # If using Docker
 # or
-mysql -u root -pWP@12345 -h localhost  # If local
+mysql -u root -p<your-db-password> -h localhost  # If local
 ```
 
 **Error: "Access denied for user 'root'@'localhost'"**
 ```bash
-# Check password is correct: WP@12345
+# Check password is correct: <your-db-password>
 # Update DATABASE_URL if needed
 ```
 
@@ -190,7 +190,7 @@ docker-compose restart api
 **Error: "Column count doesn't match"**
 ```bash
 # Drop and recreate tables
-mysql -u root -pWP@12345 loan_approval_dev
+mysql -u root -p<your-db-password> loan_approval_dev
 DROP TABLE IF EXISTS loan_applications;
 # Restart application
 ```
@@ -221,14 +221,14 @@ If you had a PostgreSQL database, the data structure remains the same. You would
 
 2. Import to MySQL:
    ```bash
-   mysql -u root -pWP@12345 loan_approval_dev < backup.sql
+   mysql -u root -p<your-db-password> loan_approval_dev < backup.sql
    ```
 
 3. Update connection strings everywhere
 
 4. Verify all tables are present:
    ```bash
-   mysql -u root -pWP@12345 -e "SHOW TABLES FROM loan_approval_dev;"
+   mysql -u root -p<your-db-password> -e "SHOW TABLES FROM loan_approval_dev;"
    ```
 
 ## Files Modified for MySQL
@@ -286,7 +286,7 @@ If you encounter issues:
 2. Review error logs: `docker-compose logs`
 3. Check MySQL logs: `docker-compose logs db`
 4. Verify MySQL is running: `docker ps`
-5. Test connection: `mysql -u root -pWP@12345 -h localhost`
+5. Test connection: `mysql -u root -p<your-db-password> -h localhost`
 
 ---
 

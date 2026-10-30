@@ -65,7 +65,7 @@ class ManualReviewRequest(BaseModel):
     application_id: str = Field(..., description="Application ID")
     reason: str = Field(..., min_length=10, max_length=1000, description="Reason for manual review")
     assigned_to: Optional[str] = Field(None, description="Reviewer name or ID")
-    priority: str = Field("normal", regex="^(low|normal|high|urgent)$", description="Review priority")
+    priority: str = Field("normal", pattern="^(low|normal|high|urgent)$", description="Review priority")
 
 
 class ManualReviewResponse(BaseModel):
@@ -111,7 +111,7 @@ class BatchApplicationRequest(BaseModel):
     """Request to process multiple applications."""
 
     application_ids: List[str] = Field(..., min_items=1, max_items=100, description="Application IDs to process")
-    action: str = Field(..., regex="^(approve|reject|review)$", description="Action to perform")
+    action: str = Field(..., pattern="^(approve|reject|review)$", description="Action to perform")
     reason: Optional[str] = Field(None, max_length=1000, description="Reason for batch action")
 
 

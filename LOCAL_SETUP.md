@@ -19,7 +19,7 @@ brew services list
 brew services start mysql
 
 # Connect to verify
-mysql -u root -pWP@12345 -h localhost
+mysql -u root -p<your-db-password> -h localhost
 # Type 'exit' to quit
 ```
 
@@ -32,7 +32,7 @@ sudo systemctl start mysql
 sudo systemctl status mysql
 
 # Connect
-mysql -u root -pWP@12345 -h localhost
+mysql -u root -p<your-db-password> -h localhost
 ```
 
 ### Windows
@@ -44,7 +44,7 @@ mysql -u root -pWP@12345 -h localhost
 net start MySQL80
 
 # Connect
-mysql -u root -pWP@12345 -h localhost
+mysql -u root -p<your-db-password> -h localhost
 ```
 
 ## Step 2: Clone/Navigate to Project
@@ -91,7 +91,7 @@ Your `.env` file should contain:
 ```
 DEBUG=True
 LOG_LEVEL=INFO
-DATABASE_URL=mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev
+DATABASE_URL=mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev
 API_HOST=127.0.0.1
 API_PORT=8000
 STREAMLIT_SERVER_PORT=8501
@@ -107,7 +107,7 @@ Open Terminal 1:
 cd /home/ubuntu/Desktop/CapStone
 
 # Activate environment variables
-export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+export DATABASE_URL="mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev"
 export ANTHROPIC_API_KEY="sk-ant-your-key-here"
 
 # Start the API server
@@ -174,7 +174,7 @@ curl http://127.0.0.1:8000/health
 
 ```bash
 # Connect to MySQL
-mysql -u root -pWP@12345 loan_approval_dev
+mysql -u root -p<your-db-password> loan_approval_dev
 
 # View tables
 SHOW TABLES;
@@ -247,8 +247,8 @@ sudo tail -f /var/log/mysql/error.log
 **Error**: `Can't connect to MySQL server on 'localhost:3306'`
 
 **Solutions**:
-1. Verify MySQL is running: `mysql -u root -pWP@12345 -h localhost`
-2. Check credentials are correct (root / WP@12345)
+1. Verify MySQL is running: `mysql -u root -p<your-db-password> -h localhost`
+2. Check credentials are correct (root / <your-db-password>)
 3. Verify port 3306 is not blocked by firewall
 4. Restart MySQL service
 
@@ -281,7 +281,7 @@ poetry install
 **Solution**: 
 1. Verify MySQL database exists:
 ```bash
-mysql -u root -pWP@12345 -e "SHOW DATABASES;"
+mysql -u root -p<your-db-password> -e "SHOW DATABASES;"
 ```
 
 2. If not found, restart the API - SQLAlchemy will auto-create tables:
@@ -344,7 +344,7 @@ code /home/ubuntu/Desktop/CapStone
 ```bash
 # Start everything (2 terminals)
 # Terminal 1:
-export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+export DATABASE_URL="mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev"
 export ANTHROPIC_API_KEY="your-key"
 uvicorn backend.main:app --reload
 
@@ -358,7 +358,7 @@ streamlit run frontend/app.py
 pytest
 
 # Check MySQL:
-mysql -u root -pWP@12345 -h localhost
+mysql -u root -p<your-db-password> -h localhost
 
 # View API docs:
 http://127.0.0.1:8000/docs

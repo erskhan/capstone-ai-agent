@@ -55,7 +55,7 @@ LANGSMITH_TRACING=true
 ### Verify Database Configuration
 
 - [ ] `DATABASE_URL` points to correct MySQL instance
-- [ ] MySQL credentials are correct: `root:WP@12345`
+- [ ] MySQL credentials are correct: `root:<your-db-password>`
 - [ ] Database name is `loan_approval_dev`
 - [ ] MySQL service is running
 
@@ -108,7 +108,7 @@ print('✅ ApplicantProfileAgent initialized')"
 ### Terminal 1 - API Server
 
 ```bash
-export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+export DATABASE_URL="mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev"
 uvicorn backend.main:app --reload
 ```
 

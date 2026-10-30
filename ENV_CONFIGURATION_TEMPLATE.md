@@ -12,7 +12,7 @@ DEBUG=True
 LOG_LEVEL=INFO
 
 # Database Configuration - MySQL (Local)
-DATABASE_URL=mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev
+DATABASE_URL=mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev
 
 # API Configuration - Local
 API_HOST=127.0.0.1
@@ -210,7 +210,7 @@ print('✅ LangSmith Project:', settings.langsmith_project)
 "
 
 # 8. Start the API server
-export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+export DATABASE_URL="mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev"
 uvicorn backend.main:app --reload
 
 # 9. In another terminal, start the frontend

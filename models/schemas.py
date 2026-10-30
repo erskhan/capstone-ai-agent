@@ -171,7 +171,7 @@ class PaginationParams(BaseModel):
     """Pagination parameters."""
 
     skip: int = Field(0, ge=0)
-    limit: int = Field(10, ge=1, le=100)
+    limit: int = Field(10, ge=1, le=1000)
 
 
 class ApplicationListResponse(BaseModel):

@@ -1,4 +1,4 @@
-"""Admin Dashboard for Monitoring."""
+"""Admin Dashboard for Monitoring - Admin Only."""
 
 import streamlit as st
 import requests
@@ -9,25 +9,26 @@ API_URL = st.secrets.get("API_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="Admin Dashboard", page_icon="⚙️", layout="wide")
 
+# Check if user is logged in as admin
+if st.session_state.get("user_type") != "admin":
+    st.error("❌ Please login as Admin to access the Admin Dashboard")
+    st.info("Go back to home page and login with admin password")
+    st.stop()
+
 st.title("⚙️ Admin Dashboard")
 st.markdown("*System Monitoring & Management*")
 
-# Admin Authentication (simple)
-if "admin_authenticated" not in st.session_state:
-    st.session_state.admin_authenticated = False
+# Show logout button
+col1, col2 = st.columns([5, 1])
+with col2:
+    if st.button("🔓 Logout", key="admin_dashboard_top_logout"):
+        st.session_state.user_type = None
+        st.session_state.admin_authenticated = False
+        st.rerun()
 
-if not st.session_state.admin_authenticated:
-    st.warning("⚠️ Admin Dashboard - Authentication Required")
-    admin_password = st.text_input("Enter admin password:", type="password")
+st.markdown("---")
 
-    if admin_password:
-        if admin_password == "admin123":  # TODO: Use proper authentication
-            st.session_state.admin_authenticated = True
-            st.rerun()
-        else:
-            st.error("❌ Invalid password")
-            st.stop()
-else:
+if True:  # Removed authentication check since it's done above
     # Admin Dashboard Content
 
     def get_health():
@@ -206,6 +207,6 @@ else:
 
     # Logout
     st.markdown("---")
-    if st.button("🔓 Logout"):
+    if st.button("🔓 Logout", key="admin_dashboard_bottom_logout"):
         st.session_state.admin_authenticated = False
         st.rerun()

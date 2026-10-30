@@ -10,39 +10,56 @@ API_URL = st.secrets.get("API_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="Submit Application", page_icon="📝", layout="wide")
 
+# Check if user is logged in as applicant
+if st.session_state.get("user_type") != "applicant":
+    st.error("❌ Please login as an Applicant to submit applications")
+    st.info("Go back to home page and login with your email")
+    st.stop()
+
 st.title("📝 Submit Loan Application")
 st.markdown("*Fill out the form below to apply for a loan*")
+st.markdown(f"**Submitting as:** {st.session_state.user_email}")
 
 
 def validate_form(data: Dict[str, Any]) -> tuple[bool, str]:
     """Validate form data."""
     errors = []
 
-    if not data["first_name"] or not data["last_name"]:
+    applicant = data.get("applicant_profile", {})
+    employment = data.get("employment_info", {})
+    credit = data.get("credit_record", {})
+    loan = data.get("loan_details", {})
+
+    if not applicant.get("first_name") or not applicant.get("last_name"):
         errors.append("First and last names are required")
 
-    if not data["email"] or "@" not in data["email"]:
+    if not applicant.get("email") or "@" not in applicant.get("email", ""):
         errors.append("Valid email is required")
 
-    if not data["ssn"] or len(data["ssn"].replace("-", "")) != 9:
+    if not applicant.get("ssn") or len(applicant.get("ssn", "").replace("-", "")) != 9:
         errors.append("Valid SSN (9 digits) is required")
 
-    if data["annual_income"] <= 0:
+    if employment.get("annual_income", 0) <= 0:
         errors.append("Annual income must be greater than 0")
 
-    if data["loan_amount"] <= 0 or data["loan_amount"] > 10_000_000:
+    if loan.get("loan_amount", 0) <= 0 or loan.get("loan_amount", 0) > 10_000_000:
         errors.append("Loan amount must be between $1 and $10,000,000")
 
-    if 300 > data["credit_score"] > 850:
+    credit_score = credit.get("credit_score", 700)
+    if not (300 <= credit_score <= 850):
         errors.append("Credit score must be between 300 and 850")
 
     return len(errors) == 0, "\n".join(errors)
 
 
-def submit_application(form_data: Dict[str, Any]) -> Dict[str, Any]:
+def submit_application(form_data: Dict[str, Any], user_email: str = None) -> Dict[str, Any]:
     """Submit application to API."""
     try:
-        response = requests.post(f"{API_URL}/api/applications", json=form_data, timeout=10)
+        params = {}
+        if user_email:
+            params["user_email"] = user_email
+
+        response = requests.post(f"{API_URL}/api/applications", json=form_data, params=params, timeout=10)
         return response.json()
     except Exception as e:
         return {"error": str(e)}
@@ -50,6 +67,10 @@ def submit_application(form_data: Dict[str, Any]) -> Dict[str, Any]:
 
 def main():
     """Main application submission form."""
+    # Optional: Show who is submitting
+    if "user_email" in st.session_state and st.session_state.user_email:
+        st.info(f"📧 Submitting application as: {st.session_state.user_email}")
+
     with st.form("loan_application_form"):
         # Applicant Information Section
         st.subheader("👤 Applicant Information")
@@ -188,7 +209,9 @@ def main():
             st.error(f"❌ Form Validation Error:\n{error_message}")
         else:
             with st.spinner("📤 Submitting your application..."):
-                result = submit_application(form_data)
+                # Get user email if logged in
+                user_email = st.session_state.get("user_email") if "user_email" in st.session_state else None
+                result = submit_application(form_data, user_email=user_email)
 
                 if "error" in result:
                     st.error(f"❌ Error submitting application: {result['error']}")

@@ -99,7 +99,7 @@ python test_langsmith_config.py
 ### Start the API Server:
 
 ```bash
-export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+export DATABASE_URL="mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev"
 uvicorn backend.main:app --reload
 ```
 
@@ -209,7 +209,7 @@ DEBUG=True
 LOG_LEVEL=INFO
 
 # Database Configuration - MySQL (Local)
-DATABASE_URL=mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev
+DATABASE_URL=mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev
 
 # API Configuration - Local
 API_HOST=127.0.0.1

@@ -14,6 +14,7 @@ class LoanApplicationModel(Base):
 
     id = Column(String(36), primary_key=True, index=True)
     status = Column(String(50), index=True)
+    applicant_email = Column(String(255), index=True, nullable=True)
     submitted_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     correlation_id = Column(String(36), unique=True, index=True)

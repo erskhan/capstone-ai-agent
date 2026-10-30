@@ -19,7 +19,7 @@ The entire **Foundation & Architecture** phase is finished. You now have:
 ### Step 1: Verify MySQL
 
 ```bash
-mysql -u root -pWP@12345 -h localhost
+mysql -u root -p<your-db-password> -h localhost
 exit
 ```
 
@@ -36,7 +36,7 @@ poetry install
 ### Step 3: Start API (Terminal 1)
 
 ```bash
-export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+export DATABASE_URL="mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev"
 export ANTHROPIC_API_KEY="your-api-key"
 uvicorn backend.main:app --reload
 ```
@@ -367,7 +367,7 @@ The system is now configured to use your MySQL instance:
 - **Host**: localhost
 - **Port**: 3306
 - **User**: root
-- **Password**: WP@12345
+- **Password**: <your-db-password>
 - **Database**: loan_approval_dev
 
 These credentials are already set in:

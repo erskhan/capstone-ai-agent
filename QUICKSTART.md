@@ -23,7 +23,7 @@ The project structure has been created with:
 
 ```bash
 # Check MySQL connection
-mysql -u root -pWP@12345 -h localhost
+mysql -u root -p<your-db-password> -h localhost
 
 # Type 'exit' to quit
 ```
@@ -54,7 +54,7 @@ poetry install
 
 ```bash
 # Terminal 1: Start API
-export DATABASE_URL="mysql+pymysql://root:Shahbaz123@localhost:3306/loan_approval_dev"
+export DATABASE_URL="mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev"
 uvicorn backend.main:app --reload
 
 # API will be available at: http://127.0.0.1:8000
@@ -240,7 +240,7 @@ docker-compose logs streamlit
 ### MySQL Connection Error
 ```bash
 # Make sure MySQL is running
-mysql -u root -pWP@12345 -h localhost
+mysql -u root -p<your-db-password> -h localhost
 
 # If not running, start MySQL service on your system
 # macOS: brew services start mysql

@@ -42,7 +42,7 @@ class NotificationAgent:
             api_key=settings.langsmith_api_key,
             base_url=settings.langsmith_base_url,
         )
-        self.model = "claude-opus-4-1-20250805"
+        self.model = "global.anthropic.claude-opus-4-5-20251101-v1:0"
         self.timeout = settings.agent_timeout_seconds
         self.enable_notifications = settings.enable_notifications
 
@@ -386,14 +386,16 @@ class NotificationAgent:
         """Get email template content."""
         if template_type == NotificationTemplate.APPROVED:
             subject = "Loan Application Approved"
+            amount_str = f"${approved_amount:,.2f}" if approved_amount else "To be determined"
+            rate_str = f"{recommended_rate:.2f}%" if recommended_rate else "To be determined"
             body = f"""
 Dear {applicant_name},
 
 We are delighted to inform you that your loan application has been APPROVED!
 
 APPROVAL DETAILS:
-- Approved Amount: ${approved_amount:,.2f}
-- Recommended Interest Rate: {recommended_rate:.2f}%
+- Approved Amount: {amount_str}
+- Recommended Interest Rate: {rate_str}
 - Your application has been processed successfully and meets our lending criteria.
 
 NEXT STEPS:

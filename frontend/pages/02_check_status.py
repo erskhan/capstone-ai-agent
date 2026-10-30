@@ -1,15 +1,33 @@
-"""Application Status Checking Page."""
+"""Application Status Checking Page - Applicant Only."""
 
 import streamlit as st
 import requests
 from datetime import datetime
+import pandas as pd
 
 API_URL = st.secrets.get("API_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="Check Status", page_icon="🔍", layout="wide")
 
+# Check if user is logged in as applicant
+if st.session_state.get("user_type") != "applicant":
+    st.error("❌ Please login as an Applicant to check application status")
+    st.info("Go back to home page and login with your email")
+    st.stop()
+
 st.title("🔍 Check Application Status")
-st.markdown("*Enter your application ID to check the status*")
+st.markdown("*View your loan application status and decision*")
+
+# Show logout button in top right
+col1, col2 = st.columns([5, 1])
+with col2:
+    if st.button("🔓 Logout", key="check_status_logout"):
+        st.session_state.user_type = None
+        st.session_state.user_email = None
+        st.rerun()
+
+st.markdown(f"**Logged in as:** {st.session_state.user_email}")
+st.markdown("---")
 
 
 def get_application_status(application_id: str):
@@ -39,6 +57,15 @@ def get_decision(application_id: str):
         return {"error": str(e)}
 
 
+def delete_application(application_id: str):
+    """Delete an application."""
+    try:
+        response = requests.delete(f"{API_URL}/api/applications/{application_id}", timeout=10)
+        return response.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def format_status_badge(status: str) -> str:
     """Format status as a color-coded badge."""
     badges = {
@@ -57,17 +84,25 @@ def main():
     """Main status checking interface."""
     col1, col2 = st.columns([3, 1])
 
+    # Auto-load if coming from application history
+    default_app_id = st.session_state.get("auto_load_app_id", "") or st.session_state.get("last_application_id", "")
+    auto_load = False
+
+    if st.session_state.get("auto_load_app_id"):
+        auto_load = True
+        st.session_state.pop("auto_load_app_id", None)
+
     with col1:
         application_id = st.text_input(
             "Enter Application ID",
-            value=st.session_state.get("last_application_id", ""),
+            value=default_app_id,
             placeholder="e.g., a1b2c3d4-e5f6-7890-abcd-ef1234567890",
         )
 
     with col2:
         search_button = st.button("🔍 Search", use_container_width=True, type="primary")
 
-    if search_button and application_id:
+    if (search_button or auto_load) and application_id:
         with st.spinner("Loading application details..."):
             # Get status
             status_result = get_application_status(application_id)
@@ -100,8 +135,9 @@ def main():
                         st.metric("Updated", "N/A")
 
                 # Workflow State Details
-                if "error" not in workflow_result:
-                    st.subheader("⚙️ Workflow Execution")
+                st.subheader("⚙️ Workflow Execution")
+
+                if "error" not in workflow_result and workflow_result:
                     col1, col2, col3 = st.columns(3)
 
                     with col1:
@@ -131,6 +167,16 @@ def main():
                     with col3:
                         if workflow_result.get("error_message"):
                             st.error(f"Error: {workflow_result['error_message']}")
+                else:
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Workflow State", "completed" if status_result.get("status") in ["approved", "rejected"] else "processing")
+                    with col2:
+                        st.metric("Current Step", status_result.get("status", "unknown"))
+                    with col3:
+                        st.metric("Attempt #", 1)
+
+                    st.info("✅ Decision has been processed and finalized.")
 
                 # Decision Details
                 if "error" not in decision_result and decision_result.get("classification"):
@@ -237,11 +283,49 @@ def main():
                             """
                         )
 
-                    # Appeal Button (if rejected)
-                    if classification == "rejected":
-                        if st.button("🗣️ Submit Appeal", use_container_width=True):
-                            st.session_state.appeal_application_id = application_id
-                            st.switch_page("pages/03_view_decision.py")
+                    # Action Buttons
+                    col1, col2 = st.columns(2)
+
+                    with col1:
+                        # Appeal Button (if rejected)
+                        if classification == "rejected":
+                            if st.button("🗣️ Submit Appeal", use_container_width=True):
+                                st.session_state.appeal_application_id = application_id
+                                st.switch_page("pages/03_view_decision.py")
+
+                    with col2:
+                        # Delete Button
+                        if st.button("🗑️ Delete Application", use_container_width=True, type="secondary"):
+                            st.session_state.show_delete_confirmation = True
+                            st.session_state.delete_app_id = application_id
+
+                    # Delete Confirmation Dialog
+                    if st.session_state.get("show_delete_confirmation") and st.session_state.get("delete_app_id") == application_id:
+                        st.warning("⚠️ **Are you sure you want to delete this application?**")
+                        st.info("This action cannot be undone. All application data will be permanently deleted.")
+
+                        col1, col2, col3 = st.columns([1, 1, 2])
+
+                        with col1:
+                            if st.button("✅ Yes, Delete", use_container_width=True, type="secondary"):
+                                with st.spinner("Deleting application..."):
+                                    result = delete_application(application_id)
+                                    if "error" in result:
+                                        st.error(f"❌ Error: {result['error']}")
+                                    else:
+                                        st.session_state.show_delete_confirmation = False
+                                        st.session_state.delete_app_id = None
+                                        st.success("✅ Application deleted successfully!")
+                                        st.info("Redirecting to home page...")
+                                        import time
+                                        time.sleep(2)
+                                        st.switch_page("app.py")
+
+                        with col2:
+                            if st.button("❌ Cancel", use_container_width=True):
+                                st.session_state.show_delete_confirmation = False
+                                st.session_state.delete_app_id = None
+                                st.rerun()
 
 
 if __name__ == "__main__":

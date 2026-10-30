@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Dict, Any
 
 from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from sqlalchemy.orm import Session
@@ -100,6 +101,37 @@ async def _process_application_async(
             correlation_id=correlation_id,
         )
 
+        # Save decision to database
+        db = next(get_db())
+        try:
+            # Get workflow execution
+            from database.models import WorkflowExecutionModel
+            execution = db.query(WorkflowExecutionModel).filter_by(application_id=application_id).first()
+
+            if execution and result.get("decision"):
+                # Update execution with decision results
+                WorkflowStateService.mark_completed(
+                    db,
+                    execution.id,
+                    result.get("decision")
+                )
+
+                # Update application status
+                from database.models import LoanApplicationModel
+                application = db.query(LoanApplicationModel).filter_by(id=application_id).first()
+                if application:
+                    decision_value = result.get("decision", {}).get("classification_value", "unknown")
+                    if decision_value == "approved":
+                        application.status = ApplicationStatus.APPROVED.value
+                    elif decision_value == "rejected":
+                        application.status = ApplicationStatus.REJECTED.value
+                    else:
+                        application.status = ApplicationStatus.UNDER_REVIEW.value
+                    application.updated_at = datetime.utcnow()
+                    db.commit()
+        finally:
+            db.close()
+
         logger.info(
             f"Background: Orchestration completed for {application_id}",
             extra={"correlation_id": correlation_id, "decision": result.get("decision", {}).get("classification_value")},
@@ -123,6 +155,7 @@ async def submit_application(
     request: LoanApplicationRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    user_email: str = None,
 ):
     """Submit a new loan application and start async processing."""
     try:
@@ -134,6 +167,7 @@ async def submit_application(
             extra={
                 "application_id": application_id,
                 "correlation_id": correlation_id,
+                "user_email": user_email,
             },
         )
 
@@ -143,6 +177,7 @@ async def submit_application(
             id=application_id,
             status=ApplicationStatus.SUBMITTED.value,
             correlation_id=correlation_id,
+            applicant_email=user_email,
         )
         db.add(db_application)
         db.commit()
@@ -224,15 +259,22 @@ async def get_application(
 async def list_applications(
     params: PaginationParams = Depends(),
     db: Session = Depends(get_db),
+    user_email: str = None,
 ):
-    """List all loan applications with pagination."""
+    """List loan applications with optional email filter."""
     from database.models import LoanApplicationModel
 
     query = db.query(LoanApplicationModel)
+
+    # Filter by email if provided
+    if user_email:
+        query = query.filter_by(applicant_email=user_email)
+
     total = query.count()
 
     applications = (
-        query.offset(params.skip)
+        query.order_by(LoanApplicationModel.submitted_at.desc())
+        .offset(params.skip)
         .limit(params.limit)
         .all()
     )
@@ -263,16 +305,37 @@ async def get_workflow_state(
 ):
     """Get workflow execution state for an application."""
     try:
+        from database.models import LoanApplicationModel
+
+        # Get application status
+        application = db.query(LoanApplicationModel).filter_by(id=application_id).first()
+
+        if not application:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Application {application_id} not found",
+            )
+
         state_summary = WorkflowStateService.get_workflow_state_summary(db, application_id)
 
         if not state_summary:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Workflow not found for application {application_id}",
-            )
+            # Return default state if workflow record doesn't exist
+            return {
+                "execution_id": None,
+                "application_id": application_id,
+                "workflow_state": "completed" if application.status in ["approved", "rejected"] else "processing",
+                "current_step": application.status,
+                "attempt_number": 1,
+                "error_message": None,
+                "error_step": None,
+                "started_at": application.submitted_at.isoformat() if application.submitted_at else None,
+                "completed_at": application.updated_at.isoformat() if application.updated_at else None,
+            }
 
         return state_summary
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error retrieving workflow state: {str(e)}")
         raise HTTPException(
@@ -574,12 +637,143 @@ async def detailed_health_check(
         )
 
 
+@app.post(
+    "/api/applications/{application_id}/manual-review",
+    tags=["ManualReview"],
+)
+async def submit_manual_review_decision(
+    application_id: str,
+    decision_data: dict,
+    db: Session = Depends(get_db),
+):
+    """Submit manual review decision for an application."""
+    try:
+        from database.models import LoanApplicationModel
+
+        logger.info(f"Processing manual review for {application_id}")
+
+        # Verify application exists
+        application = db.query(LoanApplicationModel).filter_by(id=application_id).first()
+        if not application:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Application {application_id} not found",
+            )
+
+        decision_type = decision_data.get("decision")
+
+        # Update application status based on decision
+        if decision_type == "approve":
+            application.status = ApplicationStatus.APPROVED.value
+            logger.info(f"Manually approved application {application_id}")
+        elif decision_type == "reject":
+            application.status = ApplicationStatus.REJECTED.value
+            logger.info(f"Manually rejected application {application_id}")
+        else:  # request_info
+            application.status = ApplicationStatus.UNDER_REVIEW.value
+            logger.info(f"Requested more info for application {application_id}")
+
+        application.updated_at = datetime.utcnow()
+        db.commit()
+
+        # Log audit entry
+        WorkflowStateService.log_audit(
+            db,
+            application_id,
+            application.correlation_id or "",
+            f"manual_review_{decision_type}",
+            details={
+                "decision": decision_type,
+                "reviewer_notes": decision_data.get("reviewer_notes", "")[:100],
+                "reviewer_id": decision_data.get("reviewer_id"),
+            },
+        )
+
+        return {
+            "message": "Manual review decision recorded successfully",
+            "application_id": application_id,
+            "decision": decision_type,
+            "status": application.status,
+            "updated_at": application.updated_at.isoformat(),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error processing manual review: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process manual review",
+        )
+
+
+@app.delete(
+    "/api/applications/{application_id}",
+    tags=["Applications"],
+)
+async def delete_application(
+    application_id: str,
+    db: Session = Depends(get_db),
+):
+    """Delete an application and all related records."""
+    try:
+        from database.models import (
+            LoanApplicationModel, WorkflowExecutionModel, AuditLogModel,
+            ApplicantModel, EmploymentInfoModel, CreditRecordModel,
+            LoanDetailsModel, RiskAssessmentModel, LoanDecisionModel
+        )
+
+        logger.info(f"Deleting application: {application_id}")
+
+        # Verify application exists
+        application = db.query(LoanApplicationModel).filter_by(id=application_id).first()
+        if not application:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Application {application_id} not found",
+            )
+
+        # Delete in correct order to respect foreign keys
+        db.query(AuditLogModel).filter_by(application_id=application_id).delete()
+        db.query(RiskAssessmentModel).filter_by(application_id=application_id).delete()
+        db.query(LoanDecisionModel).filter_by(application_id=application_id).delete()
+        db.query(LoanDetailsModel).filter_by(application_id=application_id).delete()
+        db.query(CreditRecordModel).filter_by(application_id=application_id).delete()
+        db.query(EmploymentInfoModel).filter_by(application_id=application_id).delete()
+        db.query(ApplicantModel).filter_by(application_id=application_id).delete()
+        db.query(WorkflowExecutionModel).filter_by(application_id=application_id).delete()
+        db.query(LoanApplicationModel).filter_by(id=application_id).delete()
+
+        db.commit()
+
+        logger.info(f"Successfully deleted application: {application_id}")
+
+        return {
+            "message": "Application deleted successfully",
+            "application_id": application_id,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting application: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete application",
+        )
+
+
 @app.exception_handler(ValueError)
 async def value_error_handler(request, exc):
     """Handle value errors."""
-    return ErrorResponse(
-        error_code="VALIDATION_ERROR",
-        message=str(exc),
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "error_code": "VALIDATION_ERROR",
+            "message": str(exc),
+        },
     )
 
 

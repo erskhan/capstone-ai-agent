@@ -29,7 +29,7 @@ LANGSMITH_TRACING=true
 ### 4. Start Application
 ```bash
 # Terminal 1: API
-export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+export DATABASE_URL="mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev"
 uvicorn backend.main:app --reload
 
 # Terminal 2: Frontend

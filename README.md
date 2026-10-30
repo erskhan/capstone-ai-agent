@@ -141,7 +141,7 @@ Make sure your MySQL instance is running on localhost:3306:
 
 ```bash
 # Verify MySQL is running
-mysql -u root -pWP@12345 -h localhost
+mysql -u root -p<your-db-password> -h localhost
 # Should connect successfully
 ```
 
@@ -149,7 +149,7 @@ mysql -u root -pWP@12345 -h localhost
 
 ```bash
 # Set environment variables
-export DATABASE_URL="mysql+pymysql://root:WP@12345@localhost:3306/loan_approval_dev"
+export DATABASE_URL="mysql+pymysql://root:<your-db-password>@localhost:3306/loan_approval_dev"
 export ANTHROPIC_API_KEY="your-api-key-here"
 
 # Start the API (from project root)
