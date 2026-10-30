@@ -9,6 +9,8 @@ from models.schemas import LoanApplicationRequest, ApplicationStatus
 from agents.applicant_agent import ApplicantProfileAgent
 from agents.risk_agent import FinancialRiskAnalysisAgent
 from agents.decision_agent import LoanDecisionAgent
+from agents.compliance_agent import ComplianceAgent
+from agents.notification_agent import NotificationAgent
 from shared.logger import get_logger
 from shared.exceptions import AgentException, WorkflowException
 
@@ -23,6 +25,8 @@ class WorkflowState(str, Enum):
     ANALYZING_APPLICANT = "analyzing_applicant"
     ANALYZING_RISK = "analyzing_risk"
     SYNTHESIZING_DECISION = "synthesizing_decision"
+    VALIDATING_COMPLIANCE = "validating_compliance"
+    QUEUEING_NOTIFICATIONS = "queueing_notifications"
     COMPLETED = "completed"
     FAILED = "failed"
 
@@ -59,6 +63,8 @@ class LoanApprovalOrchestrator:
         self.applicant_agent = ApplicantProfileAgent()
         self.risk_agent = FinancialRiskAnalysisAgent()
         self.decision_agent = LoanDecisionAgent()
+        self.compliance_agent = ComplianceAgent()
+        self.notification_agent = NotificationAgent()
 
         logger.info("Loan approval orchestrator initialized with all agents")
 
@@ -205,6 +211,87 @@ class LoanApprovalOrchestrator:
                 decision_step.completed_at = datetime.utcnow()
                 steps.append(decision_step)
 
+            # Step 4: Validate compliance
+            compliance_step = WorkflowStep("validate_compliance")
+            compliance_step.started_at = datetime.utcnow()
+            compliance_result = None
+            try:
+                workflow_state = WorkflowState.VALIDATING_COMPLIANCE
+                logger.info(
+                    "Starting compliance validation",
+                    extra={"correlation_id": correlation_id},
+                )
+
+                compliance_result = self.compliance_agent.validate_and_process(
+                    application_id,
+                    decision_result.get("classification_value"),
+                    risk_result.get("risk_score", 0),
+                    f"{application.applicant_profile.first_name} {application.applicant_profile.last_name}",
+                    application.applicant_profile.email,
+                    application.loan_details.loan_amount,
+                    decision_result.get("reasoning", ""),
+                )
+
+                compliance_step.status = "completed"
+                compliance_step.result = compliance_result
+                logger.info(
+                    "Compliance validation completed",
+                    extra={
+                        "correlation_id": correlation_id,
+                        "validation_passed": compliance_result.get("compliance_validation_passed"),
+                    },
+                )
+            except Exception as e:
+                compliance_step.status = "failed"
+                compliance_step.error = str(e)
+                logger.warning(
+                    f"Compliance validation failed: {str(e)}",
+                    extra={"correlation_id": correlation_id},
+                )
+            finally:
+                compliance_step.completed_at = datetime.utcnow()
+                steps.append(compliance_step)
+
+            # Step 5: Queue notifications
+            notification_step = WorkflowStep("queue_notifications")
+            notification_step.started_at = datetime.utcnow()
+            notification_result = None
+            try:
+                workflow_state = WorkflowState.QUEUEING_NOTIFICATIONS
+                logger.info(
+                    "Starting notification queuing",
+                    extra={"correlation_id": correlation_id},
+                )
+
+                notification_result = self.notification_agent.queue_decision_notification(
+                    application_id,
+                    f"{application.applicant_profile.first_name} {application.applicant_profile.last_name}",
+                    application.applicant_profile.email,
+                    application.applicant_profile.phone,
+                    decision_result.get("classification_value"),
+                    risk_result.get("risk_score", 0),
+                    decision_result.get("approved_loan_amount"),
+                    decision_result.get("recommended_rate"),
+                    decision_result.get("reasoning"),
+                )
+
+                notification_step.status = "completed"
+                notification_step.result = notification_result
+                logger.info(
+                    f"Notifications queued: {notification_result.get('notifications_queued')} notifications",
+                    extra={"correlation_id": correlation_id},
+                )
+            except Exception as e:
+                notification_step.status = "failed"
+                notification_step.error = str(e)
+                logger.warning(
+                    f"Notification queuing failed: {str(e)}",
+                    extra={"correlation_id": correlation_id},
+                )
+            finally:
+                notification_step.completed_at = datetime.utcnow()
+                steps.append(notification_step)
+
             workflow_state = WorkflowState.COMPLETED
 
             # Compile final result
@@ -218,6 +305,8 @@ class LoanApprovalOrchestrator:
                 "applicant_analysis": applicant_result,
                 "risk_analysis": risk_result,
                 "decision": decision_result,
+                "compliance": compliance_result,
+                "notifications": notification_result,
             }
 
             logger.info(
@@ -382,6 +471,89 @@ class LoanApprovalOrchestrator:
                 decision_step.completed_at = datetime.utcnow()
                 steps.append(decision_step)
 
+            # Step 4: Validate compliance
+            compliance_step = WorkflowStep("validate_compliance")
+            compliance_step.started_at = datetime.utcnow()
+            compliance_result = None
+            try:
+                workflow_state = WorkflowState.VALIDATING_COMPLIANCE
+                logger.info(
+                    "Starting compliance validation",
+                    extra={"correlation_id": correlation_id},
+                )
+
+                compliance_result = await asyncio.to_thread(
+                    self.compliance_agent.validate_and_process,
+                    application_id,
+                    decision_result.get("classification_value"),
+                    risk_result.get("risk_score", 0),
+                    f"{application.applicant_profile.first_name} {application.applicant_profile.last_name}",
+                    application.applicant_profile.email,
+                    application.loan_details.loan_amount,
+                    decision_result.get("reasoning", ""),
+                )
+
+                compliance_step.status = "completed"
+                compliance_step.result = compliance_result
+                logger.info(
+                    "Compliance validation completed",
+                    extra={
+                        "correlation_id": correlation_id,
+                        "validation_passed": compliance_result.get("compliance_validation_passed"),
+                    },
+                )
+            except Exception as e:
+                compliance_step.status = "failed"
+                compliance_step.error = str(e)
+                logger.warning(
+                    f"Compliance validation failed: {str(e)}",
+                    extra={"correlation_id": correlation_id},
+                )
+            finally:
+                compliance_step.completed_at = datetime.utcnow()
+                steps.append(compliance_step)
+
+            # Step 5: Queue notifications
+            notification_step = WorkflowStep("queue_notifications")
+            notification_step.started_at = datetime.utcnow()
+            notification_result = None
+            try:
+                workflow_state = WorkflowState.QUEUEING_NOTIFICATIONS
+                logger.info(
+                    "Starting notification queuing",
+                    extra={"correlation_id": correlation_id},
+                )
+
+                notification_result = await asyncio.to_thread(
+                    self.notification_agent.queue_decision_notification,
+                    application_id,
+                    f"{application.applicant_profile.first_name} {application.applicant_profile.last_name}",
+                    application.applicant_profile.email,
+                    application.applicant_profile.phone,
+                    decision_result.get("classification_value"),
+                    risk_result.get("risk_score", 0),
+                    decision_result.get("approved_loan_amount"),
+                    decision_result.get("recommended_rate"),
+                    decision_result.get("reasoning"),
+                )
+
+                notification_step.status = "completed"
+                notification_step.result = notification_result
+                logger.info(
+                    f"Notifications queued: {notification_result.get('notifications_queued')} notifications",
+                    extra={"correlation_id": correlation_id},
+                )
+            except Exception as e:
+                notification_step.status = "failed"
+                notification_step.error = str(e)
+                logger.warning(
+                    f"Notification queuing failed: {str(e)}",
+                    extra={"correlation_id": correlation_id},
+                )
+            finally:
+                notification_step.completed_at = datetime.utcnow()
+                steps.append(notification_step)
+
             workflow_state = WorkflowState.COMPLETED
 
             # Compile final result
@@ -396,6 +568,8 @@ class LoanApprovalOrchestrator:
                 "applicant_analysis": applicant_result,
                 "risk_analysis": risk_result,
                 "decision": decision_result,
+                "compliance": compliance_result,
+                "notifications": notification_result,
             }
 
             logger.info(
