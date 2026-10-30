@@ -1,0 +1,49 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push API image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ./Dockerfile.api
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/loan-approval-api:latest
+          ${{ secrets.DOCKER_USERNAME }}/loan-approval-api:${{ github.sha }}
+
+    - name: Build and push Frontend image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ./Dockerfile.frontend
+        push: true
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/loan-approval-frontend:latest
+          ${{ secrets.DOCKER_USERNAME }}/loan-approval-frontend:${{ github.sha }}
+
+    - name: Deploy to production
+      run: |
+        echo "Running production deployment..."
+        # Add your deployment commands here
+        # Example: SSH to server and pull latest images, restart containers
