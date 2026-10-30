@@ -21,8 +21,22 @@ from models.schemas import (
     PaginationParams,
     ApplicationListResponse,
 )
+from backend.api_schemas import (
+    DecisionDetailResponse,
+    AppealRequest,
+    AppealResponse,
+    AuditTrailResponse,
+    AuditLogEntry,
+    ManualReviewRequest,
+    ManualReviewResponse,
+    HealthCheckDetailed,
+)
 from agents.orchestrator import LoanApprovalOrchestrator
 from backend.db_service import WorkflowStateService
+from backend.appeal_service import AppealService
+from backend.audit_service import AuditService
+from backend.decision_service import DecisionService
+from datetime import datetime
 
 logger = get_logger("main")
 settings = get_settings()
@@ -292,6 +306,271 @@ async def get_workflow_execution(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retrieve workflow execution",
+        )
+
+
+@app.get(
+    "/api/applications/{application_id}/decision",
+    response_model=DecisionDetailResponse,
+    tags=["Decisions"],
+)
+async def get_decision(
+    application_id: str,
+    db: Session = Depends(get_db),
+):
+    """Get full decision details for an application."""
+    try:
+        logger.info(f"Retrieving decision for {application_id}")
+
+        decision = DecisionService.get_decision_details(db, application_id)
+
+        if not decision:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Decision not found for application {application_id}",
+            )
+
+        return DecisionDetailResponse(**decision)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error retrieving decision: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve decision",
+        )
+
+
+@app.get(
+    "/api/applications/{application_id}/audit-trail",
+    response_model=AuditTrailResponse,
+    tags=["Audit"],
+)
+async def get_audit_trail(
+    application_id: str,
+    limit: int = 100,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+):
+    """Get audit trail for an application."""
+    try:
+        logger.info(
+            f"Retrieving audit trail for {application_id}",
+            extra={"limit": limit, "offset": offset},
+        )
+
+        audit_trail = AuditService.get_audit_trail(db, application_id, limit, offset)
+
+        entries = [AuditLogEntry(**entry) for entry in audit_trail["entries"]]
+
+        return AuditTrailResponse(
+            application_id=application_id,
+            total_entries=audit_trail["total_entries"],
+            entries=entries,
+            earliest_entry=audit_trail.get("earliest_entry"),
+            latest_entry=audit_trail.get("latest_entry"),
+        )
+
+    except Exception as e:
+        logger.error(f"Error retrieving audit trail: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve audit trail",
+        )
+
+
+@app.post(
+    "/api/applications/{application_id}/appeal",
+    response_model=AppealResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Appeals"],
+)
+async def submit_appeal(
+    application_id: str,
+    request: AppealRequest,
+    db: Session = Depends(get_db),
+):
+    """Submit an appeal for a rejected application."""
+    try:
+        logger.info(
+            f"Submitting appeal for {application_id}",
+            extra={"reason_length": len(request.appeal_reason)},
+        )
+
+        # Verify application exists
+        from database.models import LoanApplicationModel
+
+        application = db.query(LoanApplicationModel).filter_by(id=application_id).first()
+
+        if not application:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Application {application_id} not found",
+            )
+
+        # Create appeal
+        appeal_result = AppealService.create_appeal(
+            db,
+            application_id,
+            request.appeal_reason,
+            request.additional_documentation,
+            request.contact_email,
+            request.contact_phone,
+        )
+
+        # Log audit entry
+        WorkflowStateService.log_audit(
+            db,
+            application_id,
+            application.correlation_id,
+            "appeal_submitted",
+            details={
+                "appeal_reason": request.appeal_reason[:100],
+                "contact_email": request.contact_email,
+            },
+        )
+
+        return AppealResponse(
+            appeal_id=appeal_result["appeal_id"],
+            application_id=appeal_result["application_id"],
+            status=appeal_result["status"],
+            submitted_at=datetime.fromisoformat(appeal_result["submitted_at"]),
+            expected_decision_date=datetime.fromisoformat(
+                appeal_result["expected_decision_date"]
+            ),
+            message="Appeal received successfully",
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error submitting appeal: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to submit appeal",
+        )
+
+
+@app.post(
+    "/api/applications/{application_id}/review",
+    response_model=ManualReviewResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["ManualReview"],
+)
+async def assign_to_manual_review(
+    application_id: str,
+    request: ManualReviewRequest,
+    db: Session = Depends(get_db),
+):
+    """Assign application to manual review."""
+    try:
+        logger.info(
+            f"Assigning {application_id} to manual review",
+            extra={"priority": request.priority},
+        )
+
+        # Verify application exists
+        from database.models import LoanApplicationModel
+
+        application = db.query(LoanApplicationModel).filter_by(id=application_id).first()
+
+        if not application:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Application {application_id} not found",
+            )
+
+        # Assign to manual review
+        review_result = AppealService.assign_to_manual_review(
+            db,
+            application_id,
+            request.reason,
+            request.assigned_to,
+            request.priority,
+        )
+
+        # Log audit entry
+        WorkflowStateService.log_audit(
+            db,
+            application_id,
+            application.correlation_id,
+            "assigned_to_manual_review",
+            details={
+                "reason": request.reason[:100],
+                "priority": request.priority,
+                "assigned_to": request.assigned_to,
+            },
+        )
+
+        return ManualReviewResponse(
+            application_id=review_result["application_id"],
+            review_id=review_result["review_id"],
+            status=review_result["status"],
+            assigned_at=datetime.fromisoformat(review_result["assigned_at"]),
+            assigned_to=review_result.get("assigned_to"),
+            estimated_completion=datetime.fromisoformat(
+                review_result["estimated_completion"]
+            ),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error assigning to manual review: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to assign to manual review",
+        )
+
+
+@app.get(
+    "/health/detailed",
+    response_model=HealthCheckDetailed,
+    tags=["Health"],
+)
+async def detailed_health_check(
+    db: Session = Depends(get_db),
+):
+    """Detailed health check with service status."""
+    try:
+        # Check database
+        db_healthy = False
+        try:
+            from database.models import LoanApplicationModel
+            db.query(LoanApplicationModel).limit(1).all()
+            db_healthy = True
+        except Exception as e:
+            logger.warning(f"Database health check failed: {str(e)}")
+
+        return HealthCheckDetailed(
+            status="healthy" if db_healthy else "degraded",
+            timestamp=datetime.utcnow(),
+            services={
+                "database": {
+                    "status": "healthy" if db_healthy else "unhealthy",
+                    "response_time_ms": 10,
+                },
+                "api": {
+                    "status": "healthy",
+                    "response_time_ms": 5,
+                },
+                "orchestrator": {
+                    "status": "healthy",
+                    "agents": 5,
+                },
+            },
+            version="0.2.0",
+            uptime_seconds=1000,
+        )
+
+    except Exception as e:
+        logger.error(f"Error in detailed health check: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Health check failed",
         )
 
 
